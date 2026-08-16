@@ -1,0 +1,17 @@
+--cpu=Cortex-M4.fp.sp
+".\objects\main.o"
+".\objects\timer.o"
+".\objects\adc.o"
+".\objects\uart.o"
+".\objects\systick.o"
+".\objects\i2s.o"
+".\objects\spi.o"
+".\objects\tft.o"
+".\objects\font.o"
+"C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Lib\ARM\arm_cortexM4lf_math.lib"
+".\objects\startup_stm32f411xe.o"
+".\objects\system_stm32f4xx.o"
+--strict --scatter ".\Objects\B1.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\Listings\B1.map" -o .\Objects\B1.axf
