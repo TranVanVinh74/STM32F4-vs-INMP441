@@ -12,10 +12,12 @@
 .\objects\main.o: .\lib1\UART.h
 .\objects\main.o: .\lib1\I2S.h
 .\objects\main.o: .\lib1\SPI.h
+.\objects\main.o: .\lib2\TFT.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\main.o: .\lib2\FONT.h
+.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
-.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\objects\main.o: C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\float.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h

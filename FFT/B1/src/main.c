@@ -3,31 +3,34 @@
 #include "UART.h"
 #include "I2S.h"
 #include "SPI.h"
+#include "TFT.h"
+#include "FONT.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h> 
 
 #include "arm_math.h"
+
+// --- C?U HÌNH AUDIO & DSP ---
 #define VOLUME_BOOST 1          
 #define FFT_SIZE 512  
 #define PI 3.14159265358979f    
 #define SAMPLE_RATE 16000.0f 
 
+// --- C?U HÌNH RADAR TFT ---
+#define RADAR_X 64         
+#define RADAR_Y 80         
+#define RADAR_R 60         
+
+// Khai báo m?ng FFT & X? lý tín hi?u
 float32_t fft_in_m1[FFT_SIZE]; float32_t fft_in_m2[FFT_SIZE]; 
 float32_t fft_in_m3[FFT_SIZE]; float32_t fft_in_m4[FFT_SIZE]; 
 float32_t win_in_m1[FFT_SIZE]; float32_t win_in_m2[FFT_SIZE]; 
 float32_t win_in_m3[FFT_SIZE]; float32_t win_in_m4[FFT_SIZE];
 float32_t fft_out_m1[FFT_SIZE]; float32_t fft_out_m2[FFT_SIZE];
 float32_t fft_out_m3[FFT_SIZE]; float32_t fft_out_m4[FFT_SIZE];
-/*
-+radar_histogram hom phieu tuc thoi la buc anh chup nhanh du lieu tho trong 1 khung hinh FFT dau moi khung hinh no se reset ve 0
-khi vong lap tan so chay cac tan so se tinh ra goc nao se nem diem so (magnitude * ScorePV) va dung vi tri goc do trong mang 
-tac dung : gom tat ca la phieu cua dai tan so trong khoang 32 ms 
-+ accum_hist[360] bo nho dem thoi gian : la bo nho loc muot theo thoi gian .Mang nay dong vai tro nhu 1 tu dien tich tru nang luong
-+ smoothed_hist bo loc lam muot khong gian lay du lieu tu accum_hist va chay thuat toan loc trung binh trong so 5 diem lan can (i-2, i-1, i, i+1, i+2).
-  
-*/
+
 float32_t radar_histogram[360];
 float32_t accum_hist[360]; 
 float32_t smoothed_hist[360];
@@ -43,7 +46,22 @@ extern uint16_t i2s3_rx_buffer[I2S_RX_BUFFER_SIZE];
 extern volatile uint8_t i2s2_half; extern volatile uint8_t i2s2_full;
 extern volatile uint8_t i2s3_half; extern volatile uint8_t i2s3_full;
 
-void Extract_Audio(uint32_t start_index, uint32_t end_index) {// ham doc mic 
+// Hàm ph? tr?: Tính kho?ng cách góc ng?n nh?t trên du?ng tròn
+int get_angle_diff(int a1, int a2) {
+    int diff = abs(a1 - a2) % 360;
+    return diff > 180 ? 360 - diff : diff;
+}
+
+// Hàm ph? tr?: V? kim radar b?ng lu?ng giác (ÐÃ Ð?O 180 Ð?)
+void draw_needle(float angle_deg, uint16_t color) {
+    float rad = (angle_deg + 180.0f) * PI / 180.0f;
+    int x_end = RADAR_X + (int)(RADAR_R * sinf(rad));
+    int y_end = RADAR_Y - (int)(RADAR_R * cosf(rad));
+    drawLine(RADAR_X, RADAR_Y, x_end, y_end, color);
+}
+
+// Hàm d?c Mic I2S
+void Extract_Audio(uint32_t start_index, uint32_t end_index) { 
     for (uint32_t i = start_index; i < end_index; i += 4) {
         int32_t amp_m1 = (int32_t)((int16_t)i2s2_rx_buffer[i]) * VOLUME_BOOST;
         if (amp_m1 > 32767) amp_m1 = 32767; else if (amp_m1 < -32768) amp_m1 = -32768;
@@ -66,56 +84,55 @@ void Extract_Audio(uint32_t start_index, uint32_t end_index) {// ham doc mic
     }
 }
 
-void unwrap_and_center_phase(float* phases, float offset, float* out_phases) {// ham dong vai tro nhu 1 bo xu ly mo cuon va chuan hoa pha cho 4 micro 
-/*
-giai van de lat qua cua vi du nhu voi goc 1 do va 359 do thuc chat chi lech nhau 2 do nhung neu lay 359-1 thi ra tan 358
-ham nay giai quyet van de nay bang cach cong them offset ket hop chia lay du 
-	VD voi goc 1 va 359 do no se lam nhu sau 
-	xet voi anpha =0 ta co 1+0=1
-	359+=359;->lenh nhau nhieu qua
-	xet voi anpha =90 do ta co 1+90=91 do 
-	mic 2 359+90=449 mod 360=89 -> thay duoc no lech dung 2 do 
-	*/
+// Hàm m? cu?n và chu?n hóa pha
+void unwrap_and_center_phase(float* phases, float offset, float* out_phases) {
     float sum = 0;
     for (int i = 0; i < 4; i++) {
         float p = phases[i] + offset;
-        p = fmodf(p, 2.0f * PI);//ham fmod tra ve phan du cua phep chia so thuc 
+        p = fmodf(p, 2.0f * PI);
         if (p < 0) p += 2.0f * PI;
         out_phases[i] = p;
         sum += p;
     }
-    float mean = sum / 4.0f;// tinh pha trung binh cua 4 mic 
-    for (int i = 0; i < 4; i++) out_phases[i] -= mean; // lay pha cua tung micro tru di gia tri trung binh tung ra do lech cua  tung mic vd nó se ghi kieu 
-	// -1 +1 -3 +3 ,..
+    float mean = sum / 4.0f;
+    for (int i = 0; i < 4; i++) out_phases[i] -= mean; 
 }
 
 int main(void) {
     SystemCoreClockUpdate(); 
-	SysTick_Init();
-	UART_Init(USART2,921600); 
+    SysTick_Init();
+    UART_Init(USART2,921600); 
     I2S_PLLI2S_Init();
-	I2S_Init(SPI3, i2s3_rx_buffer);
-	I2S_Init(SPI2, i2s2_rx_buffer);
-	
-
+    I2S_Init(SPI3, i2s3_rx_buffer);
+    I2S_Init(SPI2, i2s2_rx_buffer);
+    
+    SPI1_Init_Master();
+    
     arm_rfft_fast_init_f32(&fft_handler, FFT_SIZE);
     for (uint32_t i = 0; i < FFT_SIZE; i++) hann_window[i] = 0.5f * (1.0f - cosf(2.0f * PI * i / (FFT_SIZE - 1)));
 
-    float mic_X[4] = {-1.0f,  1.0f, -1.0f,  1.0f};// dung de chieu vector luc len truc X hoac truc Y
+    float mic_X[4] = {-1.0f,  1.0f, -1.0f,  1.0f};
     float mic_Y[4] = {-1.0f, -1.0f,  1.0f,  1.0f};
     float d_meter = 0.0275f; 
 
     memset(accum_hist, 0, sizeof(accum_hist));
 
-    UART_SendString(USART2,"--- CHE DO 4 MIC | THEO DOI GIONG NOI (VOICE TRACKING) ---\r\n");
+    // --- KH?I T?O VÀ V? N?N RADAR MÀN HÌNH TFT ---
+    initTFT();
+    fullDisplay(0x0000); 
+    drawCircle(RADAR_X, RADAR_Y, RADAR_R, 0x07E0); 
+
+    UART_SendString(USART2,"--- CHE DO 4 MIC | THEO DOI GIONG NOI & RADAR TFT | DEV: TRAN VAN VINH ---\r\n");
+
+    static int active_sources = 1;
 
     while (1) {
         if (SPI2->SR & (1 << 6)) { volatile uint32_t tmpreg = SPI2->DR; tmpreg = SPI2->SR; (void)tmpreg; }
         if (SPI3->SR & (1 << 6)) { volatile uint32_t tmpreg = SPI3->DR; tmpreg = SPI3->SR; (void)tmpreg; }
         
         if (UART_Available(USART2)) { char c = UART_Read(USART2);
-		if (c == 'R') streaming = 1;
-		else if (c == 'S') streaming = 0; }
+        if (c == 'R') streaming = 1;
+        else if (c == 'S') streaming = 0; }
         
         if (i2s2_half && i2s3_half) { i2s2_half = 0; i2s3_half = 0; Extract_Audio(0, I2S_RX_BUFFER_SIZE / 2); }
         if (i2s2_full && i2s3_full) { i2s2_full = 0; i2s3_full = 0; Extract_Audio(I2S_RX_BUFFER_SIZE / 2, I2S_RX_BUFFER_SIZE); }
@@ -136,7 +153,6 @@ int main(void) {
                 win_in_m4[i] = (fft_in_m4[i] - mean4) * hann_window[i];
             }
             
-          
             if (energy/FFT_SIZE < 200.0f) {
                 for(int i=0; i<360; i++) accum_hist[i] *= 0.5f; 
                 continue; 
@@ -158,13 +174,13 @@ int main(void) {
                 float Sum3f = 4.0f * k_factor * k_factor; 
 
                 float raw_phases[4];
-                raw_phases[0] = atan2f(fft_out_m1[2*k+1], fft_out_m1[2*k]);// su dung hàm có san atan2f de tim ra goc 
+                raw_phases[0] = atan2f(fft_out_m1[2*k+1], fft_out_m1[2*k]); 
                 raw_phases[1] = atan2f(fft_out_m2[2*k+1], fft_out_m2[2*k]);
                 raw_phases[2] = atan2f(fft_out_m3[2*k+1], fft_out_m3[2*k]);
                 raw_phases[3] = atan2f(fft_out_m4[2*k+1], fft_out_m4[2*k]);
 
                 float power = (fft_out_m1[2*k]*fft_out_m1[2*k] + fft_out_m1[2*k+1]*fft_out_m1[2*k+1]);
-                float magnitude = sqrtf(power); // lay can bac 2 de ra bien do 
+                float magnitude = sqrtf(power); 
 
                 float min_Variance = 1e9;
                 float best_Angle = 0;
@@ -175,93 +191,80 @@ int main(void) {
                     float PhAF[4];
                     unwrap_and_center_phase(raw_phases, offsets[o], PhAF);
 
-                    float Phasq = 0;// Tong binh phuong cac do lech pha no do xem do lech pha cua 4 mic cang thang the nao 
-					float PhamicR = 0;
-					float PhamicI = 0;
+                    float Phasq = 0; 
+                    float PhamicR = 0;
+                    float PhamicI = 0;
                     for(int i = 0; i < 4; i++) {
                         Phasq += PhAF[i] * PhAF[i];
-                        PhamicR += PhAF[i] * mic_X[i];// chieu len truc X
-                        PhamicI += PhAF[i] * mic_Y[i];// chieu len truc Y 
+                        PhamicR += PhAF[i] * mic_X[i];
+                        PhamicI += PhAF[i] * mic_Y[i]; 
                     }
 
-                    // thuat toan su dung ham atan2 de suy ra goc den cua am thanh 
                     float angle_rad = atan2f(PhamicI, PhamicR); 
                     
-                    // --- Ð?O CHI?U VÀ XOAY TR?C TR?C TI?P ---
-                    angle_rad = -angle_rad; // Ép thu?n chi?u kim d?ng h?
-                    float angle_deg = angle_rad * (180.0f / PI); // Quy d?i sang Ð?
-                    angle_deg -= 90.0f; // Quay tr?c ph?n m?m di 90 d?
+                    angle_rad = -angle_rad; 
+                    float angle_deg = angle_rad * (180.0f / PI); 
+                    angle_deg -= 90.0f; 
                     
                     while (angle_deg < 0.0f) angle_deg += 360.0f;
                     while (angle_deg >= 360.0f) angle_deg -= 360.0f;
-                    // ----------------------------------------
                     
-                    float AbsPhamic = sqrtf(PhamicR*PhamicR + PhamicI*PhamicI);// chieu dai cua vector dong thuan 
+                    float AbsPhamic = sqrtf(PhamicR*PhamicR + PhamicI*PhamicI); 
 
-                    float MeanPV = Phasq + Sum3f;//Tong nang luong (phuong sai) gôc cua tin hieu
-                    float MinPV  = MeanPV - 2.0f * k_factor * AbsPhamic;// la phan nang luong rac 
-					/*
-					thuat  toan tim trong cac truong hop xem trong cac truong hop truong hop nao co cho ra sai so MinPV nho nhat
-					(min_Variance) goc tuong ung voi sai so nho nhat (min_Variance) .Goc tuong ung voi sai so sai so nho nhat duoc chot lam 
-					goc tot nhat (best angle ) cbo dai tan so nay 
-					*/
-					
+                    float MeanPV = Phasq + Sum3f;
+                    float MinPV  = MeanPV - 2.0f * k_factor * AbsPhamic;
+                    
                     if (MinPV < min_Variance) {
                         min_Variance = MinPV;
-                        best_Angle = angle_deg; // Chú ý: Ðã luu s?n angle_deg chu?n hóa vào dây
+                        best_Angle = angle_deg; 
                         best_AbsPhamic = AbsPhamic;
                     }
                 }
 
-                if (min_Variance < 0.001f) min_Variance = 0.001f;// chan loi chia cho 0
-                float MeanPV_total = min_Variance + 2.0f * k_factor * best_AbsPhamic;// tong nang luong
-                float ScorePV = MeanPV_total / min_Variance;// lay tong nang luong chia cho nang luong rac, sai so lon (nguon gia) ScorePV se bi nho 
-				
-
+                if (min_Variance < 0.001f) min_Variance = 0.001f;
+                float MeanPV_total = min_Variance + 2.0f * k_factor * best_AbsPhamic;
+                float ScorePV = MeanPV_total / min_Variance;
+                
                 if (ScorePV > 12.0f) ScorePV = 12.0f; 
 
-                if (ScorePV > 6.0f) { // neu cai diem du tren 6 
-      /* cho */
+                if (ScorePV > 6.0f) { 
                     radar_histogram[(int)best_Angle % 360] += magnitude * ScorePV;
                 }
             }
 
+            // [T?I UU 1] Tang t?c d? dáp ?ng c?a b? l?c (Fast Attack)
             for(int i = 0; i < 360; i++) {
-                accum_hist[i] = accum_hist[i] * 0.65f + radar_histogram[i] * 0.35f;
+                accum_hist[i] = accum_hist[i] * 0.15f + radar_histogram[i] * 0.85f; 
             }
 
             for(int i = 0; i < 360; i++) {
-    smoothed_hist[i] = (
-        accum_hist[(i+355)%360] +
-        accum_hist[(i+356)%360] * 2.0f +
-        accum_hist[(i+357)%360] * 3.0f +
-        accum_hist[(i+358)%360] * 4.0f +
-        accum_hist[(i+359)%360] * 5.0f +
-        accum_hist[i] * 6.0f +
-        accum_hist[(i+1)%360] * 5.0f +
-        accum_hist[(i+2)%360] * 4.0f +
-        accum_hist[(i+3)%360] * 3.0f +
-        accum_hist[(i+4)%360] * 2.0f +
-        accum_hist[(i+5)%360]
-    ) / 36.0f;
-}
+                smoothed_hist[i] = (
+                    accum_hist[(i+355)%360] +
+                    accum_hist[(i+356)%360] * 2.0f +
+                    accum_hist[(i+357)%360] * 3.0f +
+                    accum_hist[(i+358)%360] * 4.0f +
+                    accum_hist[(i+359)%360] * 5.0f +
+                    accum_hist[i] * 6.0f +
+                    accum_hist[(i+1)%360] * 5.0f +
+                    accum_hist[(i+2)%360] * 4.0f +
+                    accum_hist[(i+3)%360] * 3.0f +
+                    accum_hist[(i+4)%360] * 2.0f +
+                    accum_hist[(i+5)%360]
+                ) / 36.0f;
+            }
 
             float hist_mean = 0;
             for(int i = 0; i < 360; i++) hist_mean += smoothed_hist[i];
             hist_mean /= 360.0f;
 
             float dynamic_thresh = hist_mean * 2.5f; 
-            if (dynamic_thresh < 120.0f) dynamic_thresh = 120.0f; 
+            if (dynamic_thresh < 300.0f) dynamic_thresh = 300.0f; 
             
-           char debug_buf[64];
-          sprintf(debug_buf, "hist_mean=%.1f thresh=%.1f\r\n", hist_mean, dynamic_thresh);
-          UART_SendString(USART2, debug_buf);
-        
             typedef struct {
-			    int angle; 
-			    float val; 
-			} Peak;
-			
+                int angle; 
+                float val; 
+            } Peak;
+            
             Peak candidates[36]; 
             int cand_count = 0;
 
@@ -269,7 +272,7 @@ int main(void) {
                 if (smoothed_hist[i] > dynamic_thresh) {
                     int is_peak = 1;
                 
-                    for(int d = -30; d <= 30; d++) {
+                    for(int d = -20; d <= 20; d++) {
                         if (d == 0) continue; 
                         int idx = (i + d + 360) % 360;
                         
@@ -290,7 +293,7 @@ int main(void) {
                 }
             }
 
-            // S?P X?P M?NG (Dual nested-loop theo layout g?c c?a ngu?i dùng)
+            // S?P X?P M?NG (Dual nested-loop layout g?c)
             for(int i = 0; i < cand_count - 1; i++) {
                 for(int j = i + 1; j < cand_count; j++) {
                     if(candidates[j].val > candidates[i].val) {
@@ -301,27 +304,44 @@ int main(void) {
                 }
             }
 
-            // 3. Ch?n l?c các d?nh h?p l? (T?i da 3 d?nh)
             int peak_angles[3]; 
             int peak_count = 0;
  
-           if (cand_count > 0) {
-                // Ð?nh 1 m?c d?nh du?c ch?n
+            if (cand_count > 0) {
+                // Ð?nh 1 m?c d?nh du?c ch?n (Ngu?n to nh?t)
                 peak_angles[peak_count++] = candidates[0].angle;
                 float max1_val = candidates[0].val;
 
-                // LU?T CHO NGU?N 2: 
-                // Ho?c l?n hon 35% Ngu?n 1, HO?C d?c l?p vuon cao g?p dôi nhi?u n?n
-                if (cand_count > 1 && (candidates[1].val > max1_val * 0.35f || candidates[1].val > dynamic_thresh * 2.0f)) {
-                    peak_angles[peak_count++] = candidates[1].angle;
+                float thresh_N2 = (active_sources >= 2) ? 0.30f : 0.45f;
+                float thresh_N3 = (active_sources >= 3) ? 0.25f : 0.40f;
+                
+                int min_separation = 35; 
+
+                // TÌM NGU?N 2
+                int idx_n2 = -1;
+                for(int i = 1; i < cand_count; i++) {
+                    if (candidates[i].val > max1_val * thresh_N2 && candidates[i].val > dynamic_thresh * 2.5f) {
+                        if (get_angle_diff(candidates[i].angle, peak_angles[0]) >= min_separation) {
+                            peak_angles[peak_count++] = candidates[i].angle;
+                            idx_n2 = i; break;
+                        }
+                    }
                 }
                 
-                // LU?T CHO NGU?N 3: 
-                // C?t g?t hon m?t chút, yêu c?u g?p 2.5 l?n nhi?u n?n
-                if (cand_count > 2 && (candidates[2].val > max1_val * 0.25f || candidates[2].val > dynamic_thresh * 2.5f)) {
-                    peak_angles[peak_count++] = candidates[2].angle;
+                // TÌM NGU?N 3
+                if (idx_n2 != -1) {
+                    for(int i = idx_n2 + 1; i < cand_count; i++) {
+                        if (candidates[i].val > max1_val * thresh_N3 && candidates[i].val > dynamic_thresh * 3.0f) {
+                            if (get_angle_diff(candidates[i].angle, peak_angles[0]) >= min_separation &&
+                                get_angle_diff(candidates[i].angle, peak_angles[1]) >= min_separation) {
+                                peak_angles[peak_count++] = candidates[i].angle; break;
+                            }
+                        }
+                    }
                 }
             }
+            
+            active_sources = (peak_count > 0) ? peak_count : 1; 
         
             if(peak_count > 0 && !streaming) {
                 char buf[128];
@@ -334,6 +354,82 @@ int main(void) {
                 strcat(buf, "\r\n"); 
                 UART_SendString(USART2, buf);
             }
+
+            // =========================================================
+            // [T?I UU 2] X? LÝ V? TFT - KHÔNG XÓA N?U KHÔNG C?N THI?T
+            // =========================================================
+            
+            static int target_angles[3] = {0, 0, 0};
+            static int target_timers[3] = {0, 0, 0};
+            
+            static int drawn_active[3] = {0, 0, 0};
+            static int drawn_angles[3] = {0, 0, 0};
+
+            // Rút th?i gian s?ng (M?i frame ~ 32ms. 4 frames = ~120ms)
+            for(int i = 0; i < 3; i++) {
+                if (target_timers[i] > 0) target_timers[i]--;
+            }
+
+            // Ðua góc m?i vào các rãnh
+            for (int i = 0; i < peak_count; i++) {
+                int best_match = -1;
+                int min_diff = 60; 
+                
+                for (int j = 0; j < 3; j++) {
+                    if (target_timers[j] > 0) {
+                        int diff = get_angle_diff(peak_angles[i], target_angles[j]);
+                        if (diff < min_diff) {
+                            min_diff = diff;
+                            best_match = j;
+                        }
+                    }
+                }
+                
+                if (best_match != -1) {
+                    target_angles[best_match] = peak_angles[i];
+                    target_timers[best_match] = 4; 
+                } else {
+                    for (int j = 0; j < 3; j++) {
+                        if (target_timers[j] == 0) {
+                            target_angles[j] = peak_angles[i];
+                            target_timers[j] = 4;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // V? VÀ XÓA THÔNG MINH
+            int need_redraw_center = 0;
+            
+            for(int i = 0; i < 3; i++) {
+                if (target_timers[i] > 0) {
+                    // N?u kim góc m?i KHÁC góc cu -> M?i t?n l?nh SPI d? xóa và v?
+                    if (drawn_active[i] == 0 || drawn_angles[i] != target_angles[i]) {
+                        if (drawn_active[i]) {
+                            draw_needle((float)drawn_angles[i], 0x0000); // Xóa kim cu
+                            need_redraw_center = 1;
+                        }
+                        draw_needle((float)target_angles[i], 0xF800); // V? kim m?i
+                        drawn_angles[i] = target_angles[i];
+                        drawn_active[i] = 1;
+                    }
+                } else {
+                    // N?u kim h?t th?i gian s?ng -> Xóa h?n
+                    if (drawn_active[i]) {
+                        draw_needle((float)drawn_angles[i], 0x0000); 
+                        drawn_active[i] = 0;
+                        need_redraw_center = 1;
+                    }
+                }
+            }
+
+            // CH? V? L?I TÂM N?U CÓ NÉT V?A B? XÓA (Ti?t ki?m l?nh)
+            if (need_redraw_center) {
+                drawCircle(RADAR_X, RADAR_Y, 2, 0xFFFF);   
+                drawPixel(RADAR_X, RADAR_Y + RADAR_R, 0x07E0); 
+            }
+            // =========================================================
         }
     }
 }
