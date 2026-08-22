@@ -97,7 +97,7 @@ giai van de lat pha. Vi du nhu voi goc 1 do va 359 do thuc chat chi lech nhau 2 
 ham nay giai quyet van de nay bang cach cong them offset ket hop chia lay du 
     VD voi goc 1 va 359 do no se lam nhu sau:
     xet voi alpha = 0 ta co 1+0=1
-    359+=359; -> chenh nhau nhieu qua
+    359+0=359; -> chenh nhau nhieu qua
     xet voi alpha = 90 do ta co 1+90=91 do 
     mic 2: 359+90=449 mod 360=89 -> thay duoc no lech dung 2 do 
 */
@@ -176,24 +176,30 @@ int main(void) {
             arm_rfft_fast_f32(&fft_handler, win_in_m2, fft_out_m2, 0);
             arm_rfft_fast_f32(&fft_handler, win_in_m3, fft_out_m3, 0);
             arm_rfft_fast_f32(&fft_handler, win_in_m4, fft_out_m4, 0);
-
+// chay FFT xong 
             memset(radar_histogram, 0, sizeof(radar_histogram));
             
-            int k_min = (int)(300.0f * FFT_SIZE / SAMPLE_RATE);
+            int k_min = (int)(300.0f * FFT_SIZE / SAMPLE_RATE);// xet tu tan so 300 den 1500
             int k_max = (int)(1500.0f * FFT_SIZE / SAMPLE_RATE);
 
             for (int k = k_min; k < k_max; k++) {
-                float f_hz = k * (SAMPLE_RATE / FFT_SIZE);
-                float k_factor = 2.0f * PI * f_hz * d_meter / 343.2f; 
-                float Sum3f = 4.0f * k_factor * k_factor; 
+                float f_hz = k * (SAMPLE_RATE / FFT_SIZE);// moi buoc tan so se là 31.25 HZ 
+                float k_factor = 2.0f * PI * f_hz * d_meter / 343.2f; // no se cho biet voi moi dai tan f_hz sau khi di qua
+//				quang duong d se bi lech di bao nhieu (do lech pha tai 1 micro bat ky so voi tam)( quy doi tu met sang do lech pha)
+                float Sum3f = 4.0f * k_factor * k_factor; // cong thuc tinh phuong sai 
 
                 float raw_phases[4];
-                raw_phases[0] = atan2f(fft_out_m1[2*k+1], fft_out_m1[2*k]); // su dung ham co san atan2f de tim ra goc 
+                raw_phases[0] = atan2f(fft_out_m1[2*k+1], fft_out_m1[2*k]); //raw_phases[0] chua phai là lech so voi tam chi la lech pha so voi luc lay mau
+ 				// su dung ham co san atan2f de tim ra goc 
+				/*
+				dau tien no se lay ra gia tri thuc va gia tri ao cua tung mic roi dung ham atan2 de tim ra goc
+				no chi cho biet tai thoi diem t=0 song sin cua Mic 1 dang o muc bao nhieu radian 
+				*/
                 raw_phases[1] = atan2f(fft_out_m2[2*k+1], fft_out_m2[2*k]);
                 raw_phases[2] = atan2f(fft_out_m3[2*k+1], fft_out_m3[2*k]);
                 raw_phases[3] = atan2f(fft_out_m4[2*k+1], fft_out_m4[2*k]);
 
-                float power = (fft_out_m1[2*k]*fft_out_m1[2*k] + fft_out_m1[2*k+1]*fft_out_m1[2*k+1]);
+                float power = (fft_out_m1[2*k]*fft_out_m1[2*k] + fft_out_m1[2*k+1]*fft_out_m1[2*k+1]);//tinh nang luong 
                 float magnitude = sqrtf(power); // lay can bac 2 de ra bien do 
 
                 float min_Variance = 1e9;
@@ -205,15 +211,16 @@ int main(void) {
                     float PhAF[4];
                     unwrap_and_center_phase(raw_phases, offsets[o], PhAF);
 
-                    float Phasq = 0; // Tong binh phuong cac do lech pha, do xem do lech pha cua 4 mic cang thang the nao 
-                    float PhamicR = 0;
-                    float PhamicI = 0;
+                    float Phasq = 0; // Tong binh phuong cac do lech pha, do xem do lech pha cua 4 mic cang thang the nao
+					// neu tin hieu la song am chuan thi Phasq se thap va on dinh neu tin hieu la nhieu thi Phasq se vot len cao
+                    float PhamicR = 0;//do lech pha tong hop tren truc x
+                    float PhamicI = 0;// do lech pha tong hop tren truc y
                     for(int i = 0; i < 4; i++) {
                         Phasq += PhAF[i] * PhAF[i];
                         PhamicR += PhAF[i] * mic_X[i]; // chieu len truc X
                         PhamicI += PhAF[i] * mic_Y[i]; // chieu len truc Y
                     }
-
+// tu 2 cai nay biet duoc am thanh no dang nghieng theo huong nao huong theo truc x ca truc y
                     // thuat toan su dung ham atan2 de suy ra goc den cua am thanh 
                     float angle_rad = atan2f(PhamicI, PhamicR); 
                     
@@ -227,23 +234,33 @@ int main(void) {
                     // ----------------------------------------
                     
                     float AbsPhamic = sqrtf(PhamicR*PhamicR + PhamicI*PhamicI); // chieu dai cua vector dong thuan 
+					// neu sóng âm là that vector nay se rat cao
 
                     float MeanPV = Phasq + Sum3f; // Tong nang luong (phuong sai) goc cua tin hieu
+					/*
+					Phasq:Là su hon loan thuc te ma micro do duoc 
+					Sum3f:la hang so gioi han vat ly cua mach
+					*/
                     float MinPV  = MeanPV - 2.0f * k_factor * AbsPhamic; // la phan nang luong rac 
-                    
+                    // neu phan dong thuan AbsPhamic rat cao thi MinPV se rat be 
                     /*
                     thuat toan tim trong cac truong hop xem truong hop nao cho ra sai so MinPV nho nhat
                     (min_Variance). Goc tuong ung voi sai so nho nhat duoc chot lam 
                     goc tot nhat (best angle) cho dai tan so nay 
                     */
                     if (MinPV < min_Variance) {
-                        min_Variance = MinPV;
-                        best_Angle = angle_deg; // Chu y: Da luu san angle_deg chuan hoa vao day
-                        best_AbsPhamic = AbsPhamic;
+                        min_Variance = MinPV;//luu lai cai sai so nho hon
+                        best_Angle = angle_deg; // luu lai goc toi cua song am voi truong hop sai so nho nhat
+                        best_AbsPhamic = AbsPhamic;//luu lai do dai cua vector dong thuan
                     }
                 }
 
                 if (min_Variance < 0.001f) min_Variance = 0.001f; // chan loi chia cho 0
+				/*cham diem do tin cay cho dai tan so dang xet 
+				Thuc hien bien doi nguoc lai so voi cai  float MinPV  = MeanPV - 2.0f * k_factor * AbsPhamic; 
+				de tim ra MeanPV_total
+				+ Tinh ty le diem so ScorePV lay tong nang luong chua cho nang luong rac
+				*/
                 float MeanPV_total = min_Variance + 2.0f * k_factor * best_AbsPhamic; // tong nang luong
                 float ScorePV = MeanPV_total / min_Variance; // lay tong nang luong chia cho nang luong rac, sai so lon (nguon gia) ScorePV se bi nho 
                 
@@ -253,11 +270,17 @@ int main(void) {
                     radar_histogram[(int)best_Angle % 360] += magnitude * ScorePV;
                 }
             }
-
+// bo loc IIR
             for(int i = 0; i < 360; i++) {
-                accum_hist[i] = accum_hist[i] * 0.15f + radar_histogram[i] * 0.85f; 
+                accum_hist[i] = accum_hist[i] * 0.5f + radar_histogram[i] * 0.5f; 
             }
-
+// y tuong la mot goc chi thuc su la nguon am chuan neu nhung thang xung quanh cua no cung co am thanh 
+			/*
+			
+	Ta co vong 1 bo phieu vao radar_histogram 
+vong 2 bo phieu vao accum_hist sau khi da lam muot theo thoi gian
+vong 3 sau khi lam muot smoothed_hist se chua mang 360 phan tu la ket qua bo phieu cua cac dai tan			
+			*/
             for(int i = 0; i < 360; i++) {
                 smoothed_hist[i] = (
                     accum_hist[(i+355)%360] +
@@ -278,7 +301,7 @@ int main(void) {
             for(int i = 0; i < 360; i++) hist_mean += smoothed_hist[i];
             hist_mean /= 360.0f;
 
-            float dynamic_thresh = hist_mean * 2.5f; 
+            float dynamic_thresh = hist_mean * 3.0f; 
             // Ha buc tuong chan day xuong 100 de bat duoc giong noi binh thuong
             if (dynamic_thresh < 100.0f) dynamic_thresh = 100.0f; 
             
@@ -291,7 +314,7 @@ int main(void) {
             int cand_count = 0;
 
             for(int i = 0; i < 360; i++) {
-                if (smoothed_hist[i] > dynamic_thresh) {
+                if (smoothed_hist[i] > dynamic_thresh) { 
                     int is_peak = 1;
                 
                     for(int d = -30; d <= 30 ; d++) {
@@ -315,7 +338,7 @@ int main(void) {
                 }
             }
 
-            // SAP XEP MANG (Dual nested-loop layout goc)
+            // sap xep mang 
             for(int i = 0; i < cand_count - 1; i++) {
                 for(int j = i + 1; j < cand_count; j++) {
                     if(candidates[j].val > candidates[i].val) {
@@ -334,7 +357,7 @@ int main(void) {
                 peak_angles[peak_count++] = candidates[0].angle;
                 float max1_val = candidates[0].val;
 
-                float thresh_N2 = (active_sources >= 2) ? 0.30f : 0.45f;
+                float thresh_N2 = (active_sources >= 2) ? 0.25f : 0.4f;
                 float thresh_N3 = (active_sources >= 3) ? 0.35f : 0.55f;
                 
                 int min_separation = 35; 
@@ -377,9 +400,7 @@ int main(void) {
                 UART_SendString(USART2, buf);
             }
 
-            // =========================================================
-            // XU LY VE TFT - RANH DOC LAP & TOI UU GIAO TIEP SPI
-            // =========================================================
+     
             
             static int target_angles[3] = {0, 0, 0};
             static int target_timers[3] = {0, 0, 0};
