@@ -3,6 +3,7 @@ import csv
 import statistics
 import time
 import os
+import itertools
 
 # ============================================================
 # CONFIG
@@ -11,7 +12,6 @@ import os
 PORT = "COM4"
 BAUD = 921600
 NUM_SAMPLES = 100
-DATA_DIR = "NOAI"
 
 # ============================================================
 # CIRCULAR ANGLE ERROR
@@ -24,87 +24,98 @@ def circular_error(measured, true_angle):
     return diff
 
 # ============================================================
-# MATCH 2 DETECTED ANGLES WITH 2 TRUE ANGLES
+# TỰ ĐỘNG GHÉP CẶP N GÓC ĐO ĐƯỢC VỚI N GÓC THỰC TẾ
 # ============================================================
 
-def match_two_sources(detected_1, detected_2, true_1, true_2):
-    error_a1 = circular_error(detected_1, true_1)
-    error_a2 = circular_error(detected_2, true_2)
-    total_a = error_a1 + error_a2
+def match_n_sources(detected_angles, true_angles):
+    best_permutation = None
+    min_total_error = float('inf')
+    best_errors = []
 
-    error_b1 = circular_error(detected_2, true_1)
-    error_b2 = circular_error(detected_1, true_2)
-    total_b = error_b1 + error_b2
+    # Sinh tất cả các hoán vị của góc đo được để tìm ra cách ghép khớp nhất
+    for perm in itertools.permutations(detected_angles):
+        current_errors = [circular_error(p, t) for p, t in zip(perm, true_angles)]
+        total_error = sum(current_errors)
+        
+        if total_error < min_total_error:
+            min_total_error = total_error
+            best_permutation = perm
+            best_errors = current_errors
 
-    if total_a <= total_b:
-        return detected_1, detected_2, error_a1, error_a2
-
-    return detected_2, detected_1, error_b1, error_b2
+    return list(best_permutation), best_errors
 
 # ============================================================
-# CREATE FILE NAME
-#
-# Example:
-# Run         = 1
-# Source 1    = 0 deg
-# Source 2    = 90 deg
-# Distance    = 10 cm
-#
-# 01_00_90dis01.csv
-#
-# 20 cm  -> dis02
-# 50 cm  -> dis05
-# 100 cm -> dis10
+# CREATE DYNAMIC FILE NAME
 # ============================================================
 
-def create_filename(true_angle_1, true_angle_2, distance_cm):
-    os.makedirs(DATA_DIR, exist_ok=True)
+def create_filename(num_sources, true_angles, distance_cm):
+    # Tự động tạo tên thư mục theo số nguồn (ví dụ: 1sourceNOAI, 2sourceNOAI, 3sourceNOAI)
+    data_dir = f"{num_sources}sourceNOAI"
+    os.makedirs(data_dir, exist_ok=True)
 
     distance_code = int(round(distance_cm / 10.0))
     run = 1
 
-    while True:
-        filename = (
-            f"{run:02d}_"
-            f"{true_angle_1:02d}_"
-            f"{true_angle_2:02d}"
-            f"dis{distance_code:02d}.csv"
-        )
+    # Tạo chuỗi tên góc: VD 00_90_180
+    angle_str = "_".join(f"{a:02d}" for a in true_angles)
 
-        full_path = os.path.join(DATA_DIR, filename)
+    while True:
+        filename = f"{run:02d}_{angle_str}dis{distance_code:02d}.csv"
+        full_path = os.path.join(data_dir, filename)
 
         if not os.path.exists(full_path):
-            return full_path, filename, run
+            return full_path, filename, run, data_dir
 
         run += 1
 
 # ============================================================
-# INPUT
+# INPUT SECTION (DYNAMIC)
 # ============================================================
 
-true_angle_1 = int(input("Nhap goc that nguon 1 (0 - 359): "))
-true_angle_2 = int(input("Nhap goc that nguon 2 (0 - 359): "))
-distance_cm = float(input("Nhap khoang cach (cm), vi du 10: "))
+print("============================================")
+print("DOA MEASUREMENT TOOL (DYNAMIC SOURCES)")
+print("============================================")
 
-if true_angle_1 < 0 or true_angle_1 > 359:
-    print("Goc nguon 1 khong hop le.")
-    exit()
+while True:
+    try:
+        num_sources = int(input("Nhap so luong nguon am thanh (1, 2, hoac 3): "))
+        if 1 <= num_sources <= 3:
+            break
+        print("So luong nguon phai tu 1 den 3.")
+    except ValueError:
+        print("Vui long nhap mot so nguyen.")
 
-if true_angle_2 < 0 or true_angle_2 > 359:
-    print("Goc nguon 2 khong hop le.")
-    exit()
+true_angles = []
+for i in range(num_sources):
+    while True:
+        try:
+            angle = int(input(f"Nhap goc that nguon {i+1} (0 - 359): "))
+            if 0 <= angle <= 359:
+                true_angles.append(angle)
+                break
+            print("Goc khong hop le.")
+        except ValueError:
+            print("Vui long nhap mot so nguyen.")
 
-if distance_cm <= 0:
-    print("Khoang cach khong hop le.")
-    exit()
+# Sắp xếp các góc thực tế từ bé đến lớn để tạo tên file nhất quán
+true_angles.sort()
+
+while True:
+    try:
+        distance_cm = float(input("Nhap khoang cach (cm), vi du 10: "))
+        if distance_cm > 0:
+            break
+        print("Khoang cach khong hop le.")
+    except ValueError:
+        print("Vui long nhap mot so.")
 
 # ============================================================
 # CREATE OUTPUT FILE
 # ============================================================
 
-full_path, filename, run_number = create_filename(
-    true_angle_1,
-    true_angle_2,
+full_path, filename, run_number, current_dir = create_filename(
+    num_sources,
+    true_angles,
     distance_cm
 )
 
@@ -114,25 +125,21 @@ full_path, filename, run_number = create_filename(
 
 print()
 print("============================================")
-print("2-SOURCE DOA MEASUREMENT")
+print(f"{num_sources}-SOURCE DOA MEASUREMENT STARTING...")
 print("============================================")
 print(f"Port         : {PORT}")
 print(f"Baud         : {BAUD}")
-print(f"Source 1     : {true_angle_1} deg")
-print(f"Source 2     : {true_angle_2} deg")
+for i, a in enumerate(true_angles):
+    print(f"Source {i+1}     : {a} deg")
 print(f"Distance     : {distance_cm:.1f} cm")
 print(f"Run          : {run_number}")
 print(f"Frames       : {NUM_SAMPLES}")
-print(f"Output       : {full_path}")
+print(f"Output Dir   : {current_dir}/")
+print(f"Output File  : {filename}")
 print()
 print("Dang mo UART...")
 
-ser = serial.Serial(
-    PORT,
-    BAUD,
-    timeout=1
-)
-
+ser = serial.Serial(PORT, BAUD, timeout=1)
 time.sleep(2)
 ser.reset_input_buffer()
 
@@ -148,17 +155,14 @@ print()
 
 while len(results) < NUM_SAMPLES:
     raw = ser.readline()
-
     if not raw:
         continue
 
     line = raw.decode(errors="ignore").strip()
-
     if not line.startswith("DOA,"):
         continue
 
     parts = line.split(",")
-
     if len(parts) < 2:
         continue
 
@@ -168,68 +172,43 @@ while len(results) < NUM_SAMPLES:
         continue
 
     detected_angles = []
-
     for i in range(peak_count):
         index = 2 + i
-
         if index >= len(parts):
             break
-
         try:
             angle = int(parts[index])
+            if 0 <= angle <= 359:
+                detected_angles.append(angle)
         except ValueError:
             continue
 
-        if 0 <= angle <= 359:
-            detected_angles.append(angle)
-
     sample_number = len(results) + 1
 
-    detected_source_1 = None
-    detected_source_2 = None
-    error_source_1 = None
-    error_source_2 = None
+    matched_detected = [None] * num_sources
+    errors = [None] * num_sources
     mean_error = None
 
-    if peak_count == 2 and len(detected_angles) == 2:
-        detected_source_1, detected_source_2, error_source_1, error_source_2 = match_two_sources(
-            detected_angles[0],
-            detected_angles[1],
-            true_angle_1,
-            true_angle_2
-        )
+    # Chỉ tính error nếu số nguồn phát hiện được bằng ĐÚNG số nguồn thực tế
+    if peak_count == num_sources and len(detected_angles) == num_sources:
+        matched_detected, errors = match_n_sources(detected_angles, true_angles)
+        mean_error = sum(errors) / float(num_sources)
 
-        mean_error = (error_source_1 + error_source_2) / 2.0
-
-        print(
-            f"{sample_number:3d}/{NUM_SAMPLES} | "
-            f"DOA,2 | "
-            f"S1 = {detected_source_1:3d} deg "
-            f"(err {error_source_1:3d}) | "
-            f"S2 = {detected_source_2:3d} deg "
-            f"(err {error_source_2:3d})"
-        )
-
+        log_str = f"{sample_number:3d}/{NUM_SAMPLES} | DOA,{num_sources} | "
+        for i in range(num_sources):
+            log_str += f"S{i+1}={matched_detected[i]:3d} (e:{errors[i]:3d}) "
+        print(log_str)
     else:
         angle_text = ",".join(str(a) for a in detected_angles)
-
-        print(
-            f"{sample_number:3d}/{NUM_SAMPLES} | "
-            f"Detected sources = {peak_count} | "
-            f"Angles = [{angle_text}]"
-        )
+        print(f"{sample_number:3d}/{NUM_SAMPLES} | Detected: {peak_count} | Angles: [{angle_text}]")
 
     results.append({
         "sample": sample_number,
-        "true_angle_1": true_angle_1,
-        "true_angle_2": true_angle_2,
         "distance_cm": distance_cm,
         "detected_count": peak_count,
         "raw_angles": ";".join(str(a) for a in detected_angles),
-        "detected_angle_1": detected_source_1,
-        "detected_angle_2": detected_source_2,
-        "error_1": error_source_1,
-        "error_2": error_source_2,
+        "matched_detected": matched_detected,
+        "errors": errors,
         "mean_error": mean_error
     })
 
@@ -239,111 +218,115 @@ ser.close()
 # STATISTICS
 # ============================================================
 
-valid_results = [
-    r for r in results
-    if r["detected_count"] == 2
-    and r["error_1"] is not None
-    and r["error_2"] is not None
-]
+valid_results = [r for r in results if r["detected_count"] == num_sources and all(e is not None for e in r["errors"])]
 
-count_0 = sum(r["detected_count"] == 0 for r in results)
-count_1 = sum(r["detected_count"] == 1 for r in results)
-count_2 = sum(r["detected_count"] == 2 for r in results)
-count_3 = sum(r["detected_count"] == 3 for r in results)
+counts = {0: 0, 1: 0, 2: 0, 3: 0, "more": 0}
+for r in results:
+    c = r["detected_count"]
+    if c in counts:
+        counts[c] += 1
+    else:
+        counts["more"] += 1
 
-two_source_rate = count_2 / len(results) * 100.0
+success_rate = counts.get(num_sources, 0) / len(results) * 100.0
 
 print()
 print("============================================")
-print("2-SOURCE DOA RESULT")
+print(f"RESULT SUMMARY ({num_sources} SOURCES)")
 print("============================================")
-print(f"True source 1       : {true_angle_1} deg")
-print(f"True source 2       : {true_angle_2} deg")
-print(f"Distance            : {distance_cm:.1f} cm")
-print(f"Total frames        : {len(results)}")
+print(f"True sources : {true_angles} deg")
+print(f"Distance     : {distance_cm:.1f} cm")
+print(f"Total frames : {len(results)}")
 print()
-print(f"Detected 0 source   : {count_0}")
-print(f"Detected 1 source   : {count_1}")
-print(f"Detected 2 sources  : {count_2}")
-print(f"Detected 3 sources  : {count_3}")
+for i in range(4):
+    print(f"Detected {i} source(s) : {counts[i]}")
+if counts["more"] > 0:
+    print(f"Detected >3 sources : {counts['more']}")
 print()
-print(f"2-source detect rate: {two_source_rate:.2f}%")
+print(f"Exact match detect rate: {success_rate:.2f}%")
 
 if valid_results:
-    errors_1 = [r["error_1"] for r in valid_results]
-    errors_2 = [r["error_2"] for r in valid_results]
-    all_errors = errors_1 + errors_2
+    all_errors = []
+    source_errors = [[] for _ in range(num_sources)]
+    
+    for r in valid_results:
+        for i in range(num_sources):
+            source_errors[i].append(r["errors"][i])
+            all_errors.append(r["errors"][i])
 
-    mean_error_1 = statistics.mean(errors_1)
-    mean_error_2 = statistics.mean(errors_2)
+    print()
+    print("--------------------------------------------")
+    print(f"ANGLE ERROR (ONLY FRAMES DETECTED EXACTLY {num_sources} SOURCES)")
+    print("--------------------------------------------")
+    
+    for i in range(num_sources):
+        mean_err = statistics.mean(source_errors[i])
+        print(f"Mean error Source {i+1} ({true_angles[i]} deg) : {mean_err:.2f} deg")
+    
     mean_error_all = statistics.mean(all_errors)
-
     median_error = statistics.median(all_errors)
-    std_error = statistics.pstdev(all_errors)
+    std_error = statistics.pstdev(all_errors) if len(all_errors) > 1 else 0.0
     max_error = max(all_errors)
 
     within_5 = sum(e <= 5 for e in all_errors) / len(all_errors) * 100.0
     within_10 = sum(e <= 10 for e in all_errors) / len(all_errors) * 100.0
     within_20 = sum(e <= 20 for e in all_errors) / len(all_errors) * 100.0
 
+    print(f"Overall Mean error       : {mean_error_all:.2f} deg")
+    print(f"Overall Median error     : {median_error:.2f} deg")
+    print(f"Overall Std deviation    : {std_error:.2f} deg")
+    print(f"Overall Maximum error    : {max_error:.2f} deg")
     print()
-    print("--------------------------------------------")
-    print("ANGLE ERROR - FRAMES WITH 2 SOURCES")
-    print("--------------------------------------------")
-    print(f"Mean error source 1 : {mean_error_1:.2f} deg")
-    print(f"Mean error source 2 : {mean_error_2:.2f} deg")
-    print(f"Mean error overall  : {mean_error_all:.2f} deg")
-    print(f"Median error        : {median_error:.2f} deg")
-    print(f"Std deviation       : {std_error:.2f} deg")
-    print(f"Maximum error       : {max_error:.2f} deg")
-    print()
-    print(f"Error <= 5 deg      : {within_5:.2f}%")
-    print(f"Error <= 10 deg     : {within_10:.2f}%")
-    print(f"Error <= 20 deg     : {within_20:.2f}%")
+    print(f"Frames with Error <= 5 deg  : {within_5:.2f}%")
+    print(f"Frames with Error <= 10 deg : {within_10:.2f}%")
+    print(f"Frames with Error <= 20 deg : {within_20:.2f}%")
 else:
-    print()
-    print("Khong co frame nao phat hien dung 2 nguon.")
+    print("\nKhong co frame nao phat hien dung so luong nguon yeu cau.")
 
 # ============================================================
-# SAVE CSV
+# SAVE CSV DYNAMICALLY
 # ============================================================
 
-with open(
-    full_path,
-    "w",
-    newline="",
-    encoding="utf-8"
-) as f:
+# Tạo header động
+csv_headers = ["sample", "distance_cm", "detected_count", "raw_angles"]
+for i in range(num_sources):
+    csv_headers.append(f"true_angle_{i+1}")
+for i in range(num_sources):
+    csv_headers.append(f"detected_angle_{i+1}")
+for i in range(num_sources):
+    csv_headers.append(f"error_{i+1}")
+csv_headers.append("mean_error")
+
+with open(full_path, "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
-
-    writer.writerow([
-        "sample",
-        "true_angle_1",
-        "true_angle_2",
-        "distance_cm",
-        "detected_count",
-        "raw_angles",
-        "detected_angle_1",
-        "detected_angle_2",
-        "error_1",
-        "error_2",
-        "mean_error"
-    ])
+    writer.writerow(csv_headers)
 
     for r in results:
-        writer.writerow([
+        row = [
             r["sample"],
-            r["true_angle_1"],
-            r["true_angle_2"],
             r["distance_cm"],
             r["detected_count"],
-            r["raw_angles"],
-            "" if r["detected_angle_1"] is None else r["detected_angle_1"],
-            "" if r["detected_angle_2"] is None else r["detected_angle_2"],
-            "" if r["error_1"] is None else r["error_1"],
-            "" if r["error_2"] is None else r["error_2"],
-            "" if r["mean_error"] is None else f"{r['mean_error']:.2f}"
-        ])
+            r["raw_angles"]
+        ]
+        # Điền true angles
+        for a in true_angles:
+            row.append(a)
+        
+        # Điền detected angles (nếu match)
+        for i in range(num_sources):
+            val = r["matched_detected"][i]
+            row.append("" if val is None else val)
+            
+        # Điền errors (nếu match)
+        for i in range(num_sources):
+            val = r["errors"][i]
+            row.append("" if val is None else val)
+            
+        # Điền mean error
+        me = r["mean_error"]
+        row.append("" if me is None else f"{me:.2f}")
+
+        writer.writerow(row)
 
 print()
 print("============================================")
