@@ -19,7 +19,7 @@ PB5->SD
 }
 */
 #include "stm32f4xx.h"
-#define I2S_RX_BUFFER_SIZE 4096 // kich thuoc cua mang buffer chua du lieu khi am thanh I2S do ve 
+#define I2S_RX_BUFFER_SIZE 2048 // kich thuoc cua mang buffer chua du lieu khi am thanh I2S do ve 
 void I2S_PLLI2S_Init(void);// Ham tao xung nhip cho I2S
 /*
 Brief I2S_Init() :

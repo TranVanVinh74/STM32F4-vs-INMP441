@@ -1,6 +1,6 @@
 Dependencies for Project 'B1', Target 'Target 1': (DO NOT MODIFY !)
 CompilerVersion: 5060750::V5.06 update 6 (build 750)::.\ARMCC
-F (.\src\main.c)(0x6AC30EF5)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O2 --apcs=interwork --split_sections -I .\src -I .\lib1 -I .\lib2-I.\RTE\_Target_1-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="538" -D_RTE_ -DSTM32F411xE -D_RTE_ -DARM_MATH_CM4 -D__FPU_PRESENT="1"-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
+F (.\src\main.c)(0x6AC5191A)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O2 --apcs=interwork --split_sections -I .\src -I .\lib1 -I .\lib2-I.\RTE\_Target_1-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="538" -D_RTE_ -DSTM32F411xE -D_RTE_ -DARM_MATH_CM4 -D__FPU_PRESENT="1"-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x5C5B9E32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f411xe.h)(0x5C5B9E32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\core_cm4.h)(0x5E8EDF32)
@@ -13,7 +13,7 @@ I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSI
 I (.\lib1\RCC.h)(0x6AB79A8F)
 I (.\lib1\SysTick.h)(0x6AB76F1D)
 I (.\lib1\UART.h)(0x6AB76F1D)
-I (.\lib1\I2S.h)(0x6AB76F1D)
+I (.\lib1\I2S.h)(0x6AC51554)
 I (.\lib1\SPI.h)(0x6AB76F1D)
 I (.\lib2\TFT.h)(0x6AB76F1D)
 I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x5EC7840C)
@@ -74,7 +74,7 @@ I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\cms
 I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\mpu_armv7.h)(0x5E8EDF32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5C5B9E32)
 F (.\lib1\I2S.c)(0x6AB76F1D)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O2 --apcs=interwork --split_sections -I .\src -I .\lib1 -I .\lib2-I.\RTE\_Target_1-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="538" -D_RTE_ -DSTM32F411xE -D_RTE_ -DARM_MATH_CM4 -D__FPU_PRESENT="1"-o .\objects\i2s.o --omf_browse .\objects\i2s.crf --depend .\objects\i2s.d)
-I (lib1\I2S.h)(0x6AB76F1D)
+I (lib1\I2S.h)(0x6AC51554)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x5C5B9E32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f411xe.h)(0x5C5B9E32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\core_cm4.h)(0x5E8EDF32)
@@ -84,7 +84,7 @@ I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\cms
 I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\cmsis_armcc.h)(0x5E8EDF32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include\mpu_armv7.h)(0x5E8EDF32)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5C5B9E32)
-F (.\lib1\I2S.h)(0x6AB76F1D)()
+F (.\lib1\I2S.h)(0x6AC51554)()
 F (.\lib1\SPI.h)(0x6AB76F1D)()
 F (.\lib1\SPI.c)(0x6AB76F1D)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O2 --apcs=interwork --split_sections -I .\src -I .\lib1 -I .\lib2-I.\RTE\_Target_1-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\DSP\Include-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="538" -D_RTE_ -DSTM32F411xE -D_RTE_ -DARM_MATH_CM4 -D__FPU_PRESENT="1"-o .\objects\spi.o --omf_browse .\objects\spi.crf --depend .\objects\spi.d)
 I (lib1\SPI.h)(0x6AB76F1D)

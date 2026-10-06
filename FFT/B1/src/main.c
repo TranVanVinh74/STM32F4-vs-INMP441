@@ -320,30 +320,80 @@ static void AI_UpdateTrackers(int peak_count, int *peak_angles, uint8_t *peak_bi
     }
 }
 
-// ============================================================
-// SIGNAL PROCESSING HELPERS
-// ============================================================
-void Extract_Audio(uint32_t start_index, uint32_t end_index) {
-    for (uint32_t i = start_index; i < end_index; i += 4) {
-        int32_t amp_m1 = (int32_t)((int16_t)i2s2_rx_buffer[i]) * VOLUME_BOOST;
-        if (amp_m1 > 32767) amp_m1 = 32767; else if (amp_m1 < -32768) amp_m1 = -32768;
+#define HALF_FFT (FFT_SIZE / 2)
+void Extract_Audio(uint32_t start_index, uint32_t end_index)
+{
+    // Main dang x? lý frame FFT -> không ghi dè buffer FFT
+    if (data_ready) {
+        return;
+    }
+
+    for (uint32_t i = start_index; i < end_index; i += 4)
+    {
+        // B?o v? tuy?t d?i tránh ghi quá fft_in[511]
+        if (float_index >= FFT_SIZE)
+        {
+            data_ready = 1;
+            return;
+        }
+
+        // =====================================================
+        // READ 4 MICROPHONES
+        // =====================================================
+
+        int16_t raw_m1 = (int16_t)i2s2_rx_buffer[i];
+        int16_t raw_m2 = (int16_t)i2s2_rx_buffer[i + 2];
+
+        int16_t raw_m3 = (int16_t)i2s3_rx_buffer[i];
+        int16_t raw_m4 = (int16_t)i2s3_rx_buffer[i + 2];
+
+
+        // =====================================================
+        // GAIN
+        // Không t? ý delay microphone nào
+        // =====================================================
+
+        int32_t amp_m1 = (int32_t)raw_m1 * VOLUME_BOOST;
+        int32_t amp_m2 = (int32_t)raw_m2 * VOLUME_BOOST;
+        int32_t amp_m3 = (int32_t)raw_m3 * VOLUME_BOOST;
+        int32_t amp_m4 = (int32_t)raw_m4 * VOLUME_BOOST;
+
+
+        // =====================================================
+        // SATURATION / CLIPPING
+        // =====================================================
+
+        if (amp_m1 > 32767)       amp_m1 = 32767;
+        else if (amp_m1 < -32768) amp_m1 = -32768;
+
+        if (amp_m2 > 32767)       amp_m2 = 32767;
+        else if (amp_m2 < -32768) amp_m2 = -32768;
+
+        if (amp_m3 > 32767)       amp_m3 = 32767;
+        else if (amp_m3 < -32768) amp_m3 = -32768;
+
+        if (amp_m4 > 32767)       amp_m4 = 32767;
+        else if (amp_m4 < -32768) amp_m4 = -32768;
+
+
+        // =====================================================
+        // STORE INTO FFT FRAME
+        // =====================================================
+
         fft_in_m1[float_index] = (float32_t)amp_m1;
-
-        int32_t amp_m3 = (int32_t)((int16_t)i2s3_rx_buffer[i]) * VOLUME_BOOST;
-        if (amp_m3 > 32767) amp_m3 = 32767; else if (amp_m3 < -32768) amp_m3 = -32768;
-        fft_in_m3[float_index] = (float32_t)amp_m3;
-
-        int32_t amp_m2 = (int32_t)((int16_t)i2s2_rx_buffer[i + 2]) * VOLUME_BOOST;
-        if (amp_m2 > 32767) amp_m2 = 32767; else if (amp_m2 < -32768) amp_m2 = -32768;
         fft_in_m2[float_index] = (float32_t)amp_m2;
-
-        int32_t amp_m4 = (int32_t)((int16_t)i2s3_rx_buffer[i + 2]) * VOLUME_BOOST;
-        if (amp_m4 > 32767) amp_m4 = 32767; else if (amp_m4 < -32768) amp_m4 = -32768;
+        fft_in_m3[float_index] = (float32_t)amp_m3;
         fft_in_m4[float_index] = (float32_t)amp_m4;
 
         float_index++;
-        if (float_index >= FFT_SIZE) {
-            float_index = 0;
+
+
+        // =====================================================
+        // FFT FRAME READY
+        // =====================================================
+
+        if (float_index == FFT_SIZE)
+        {
             data_ready = 1;
             return;
         }
@@ -365,6 +415,9 @@ void unwrap_and_center_phase(float *phases, float offset, float *out_phases) {
     }
 }
 
+// ============================================================
+// MAIN LOOP
+// ============================================================
 // ============================================================
 // MAIN LOOP
 // ============================================================
@@ -405,18 +458,35 @@ int main(void) {
             volatile uint32_t tmpreg = SPI3->DR; tmpreg = SPI3->SR; (void)tmpreg;
         }
 
-        if (i2s2_half && i2s3_half) {
-            i2s2_half = 0; i2s3_half = 0;
-            Extract_Audio(0, I2S_RX_BUFFER_SIZE / 2);
-        }
+       if (!data_ready) {
 
-        if (i2s2_full && i2s3_full) {
-            i2s2_full = 0; i2s3_full = 0;
-            Extract_Audio(I2S_RX_BUFFER_SIZE / 2, I2S_RX_BUFFER_SIZE);
-        }
+    if (i2s2_half && i2s3_half) {
+
+        i2s2_half = 0;
+        i2s3_half = 0;
+
+        Extract_Audio(
+            0,
+            I2S_RX_BUFFER_SIZE / 2
+        );
+    }
+
+    if (!data_ready &&
+        i2s2_full &&
+        i2s3_full) {
+
+        i2s2_full = 0;
+        i2s3_full = 0;
+
+        Extract_Audio(
+            I2S_RX_BUFFER_SIZE / 2,
+            I2S_RX_BUFFER_SIZE
+        );
+    }
+}
 
         if (data_ready) {
-            data_ready = 0;
+            // LUU Ý S? 1: KHÔNG reset data_ready = 0 ? dây n?a!
 
             float32_t mean1 = 0.0f, mean2 = 0.0f, mean3 = 0.0f, mean4 = 0.0f;
             for (uint32_t i = 0; i < FFT_SIZE; i++) {
@@ -443,7 +513,7 @@ int main(void) {
             // KHO?NG L?NG (SILENCE)
             // ============================================================
             if ((energy / FFT_SIZE) < 50.0f) {
-                for (int i = 0; i < 360; i++) accum_hist[i] *= 0.92f;
+                for (int i = 0; i < 360; i++) accum_hist[i] *= 0.96f;
 
 #if ENABLE_AI_TRACKING
                 AI_UpdateTrackers(0, NULL, NULL, NULL);
@@ -455,7 +525,8 @@ int main(void) {
 #if SEND_DOA_TEST_UART
                 UART_SendDOAFrame(USART2, 0, NULL);
 #endif
-                continue;
+                // LUU Ý S? 2: Ð?i continue thành goto DO_OVERLAP
+                goto DO_OVERLAP; 
             }
 
             arm_rfft_fast_f32(&fft_handler, win_in_m1, fft_out_m1, 0);
@@ -539,7 +610,7 @@ int main(void) {
             }
 
             for (int i = 0; i < 360; i++) {
-                accum_hist[i] = accum_hist[i] * 0.75f + radar_histogram[i] * 0.25f;
+                accum_hist[i] = accum_hist[i] * 0.88f + radar_histogram[i] * 0.12f;
             }
 
             for (int i = 0; i < 360; i++) {
@@ -698,6 +769,22 @@ int main(void) {
     #endif
 
 #endif
+
+        // LUU Ý S? 3: PH?N D?CH M?NG QUAN TR?NG NH?T ? ÐÂY
+        DO_OVERLAP:
+            // D?ch 256 m?u ? n?a sau lên n?a tru?c d? t?o Overlap 50%
+            for (int i = 0; i < FFT_SIZE / 2; i++) {
+                fft_in_m1[i] = fft_in_m1[i + FFT_SIZE / 2];
+                fft_in_m2[i] = fft_in_m2[i + FFT_SIZE / 2];
+                fft_in_m3[i] = fft_in_m3[i + FFT_SIZE / 2];
+                fft_in_m4[i] = fft_in_m4[i + FFT_SIZE / 2];
+            }
+            
+            // Ð?t l?i con tr? d? DMA n?p ti?p d? li?u m?i vào n?a sau
+            float_index = FFT_SIZE / 2;
+            
+            // X? lý và d?ch m?ng xong toàn b? m?i m? khóa cho DMA ch?y ti?p
+            data_ready = 0;
 
         } // End if (data_ready)
     } // End while(1)

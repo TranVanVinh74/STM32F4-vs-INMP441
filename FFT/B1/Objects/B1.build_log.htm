@@ -21,7 +21,7 @@ Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.0.7.0
 Dialog DLL:      TCM.DLL V1.46.0.0
  
 <h2>Project:</h2>
-D:\download\STM32F4-vs-INMP441-AI\STM32F4-vs-INMP441-AI\FFT\B1\B1.uvprojx
+D:\STM32F4-vs-INMP441-AI\STM32F4-vs-INMP441-AI\FFT\B1\B1.uvprojx
 Project File Date:  09/26/2026
 
 <h2>Output:</h2>
@@ -42,16 +42,25 @@ C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\D
   #endif
 .\lib1\AI_Model.h(6): warning:  #1-D: last line of file ends without a newline
   #endif
-src\main.c(704): warning:  #1-D: last line of file ends without a newline
+src\main.c(529): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "k_min"  (declared at line 539)
+            variable "k_max"  (declared at line 540)
+            variable "hist_mean"  (declared at line 632)
+            variable "dynamic_thresh"  (declared at line 636)
+            variable "cand_count"  (declared at line 641)
+            variable "peak_count"  (declared at line 673)
+                  goto DO_OVERLAP; 
+                  ^
+src\main.c(791): warning:  #1-D: last line of file ends without a newline
   }
 src\main.c(163): warning:  #177-D: function "AI_UpdateTFT"  was declared but never referenced
   static void AI_UpdateTFT(void) {
 src\main.c(253): warning:  #177-D: function "AI_UpdateTrackers"  was declared but never referenced
   static void AI_UpdateTrackers(int peak_count, int *peak_angles, uint8_t *peak_bin_count, float peak_features[][NUM_BANDS]) {
-src\main.c: 10 warnings, 0 errors
+src\main.c: 11 warnings, 0 errors
 linking...
-Program Size: Code=13492 RO-data=120532 RW-data=28 ZI-data=50964  
-".\Objects\B1.axf" - 0 Error(s), 10 Warning(s).
+Program Size: Code=13644 RO-data=120532 RW-data=28 ZI-data=42772  
+".\Objects\B1.axf" - 0 Error(s), 11 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -83,9 +92,9 @@ Package Vendor: Keil
       Library file:  CMSIS/DSP/Lib/ARM/arm_cortexM4lf_math.lib
 
    * Component: Keil::Device:Startup:2.6.3
+      Include file:  Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h
       Source file:   MDK/Device/Source/ARM/STM32F411xx_OPT.s
       Source file:   MDK/Device/Source/ARM/STM32F4xx_OTP.s
-      Include file:  Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/arm/startup_stm32f411xe.s
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
 Build Time Elapsed:  00:00:01
