@@ -1,0 +1,4 @@
+source_file,sound_type,windows,accuracy_percent
+final_test_raw/keep/music/music_07.csv,music,223,83.40807174887892
+final_test_raw/keep/speech/speech_11.csv,speech,208,98.5576923076923
+final_test_raw/noise/fan/fan_09.csv,fan,212,93.39622641509435

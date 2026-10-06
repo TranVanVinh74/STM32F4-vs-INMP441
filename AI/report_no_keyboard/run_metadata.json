@@ -1,0 +1,21 @@
+{
+  "model": "mlp_audio_temporal.keras",
+  "window_rows": 5,
+  "features": "16 means + 16 population standard deviations; log1p; saved StandardScaler",
+  "keep_threshold": 0.5,
+  "excluded_evaluation_types": [
+    "keyboard"
+  ],
+  "note": "Original training and validation include keyboard. No retraining performed. Final evaluation covers only fan, speech and music when using the current data. Folder naming alone does not establish that final data were never used for model selection.",
+  "sha256": {
+    "mlp_audio_temporal.keras": "8a6f120b93165a316f23e476c1395f36cacc1afb15f16c3d110f99d7dd8dd8ef",
+    "scaler_temporal.pkl": "001626868128a260f6f34dd4ce534478e59c26bbd667bc518647f5371875eedf",
+    "test_temporal.csv": "cfb78cf7e6c2573e6109e9941b702794917a6cf5c22e8ee3726605c171503115",
+    "training_history_temporal.csv": "e0b1f063582a6926474b53fe33bb2bb7bc29eb5dc77dbbc50163b8406dd3ef0e",
+    "report_model.py": "2d93ae9f8407721621938ae4ea9e4f06fb940956c609ace2f4a3b40cf502c412",
+    "final_test_raw/keep/music/music_07.csv": "9d8bc3ba7da797970320f51a6bee6deb26658f744110bb3b18b0911406076000",
+    "final_test_raw/keep/speech/speech_11.csv": "32bac695d182a5f6d8451337a9d86f1bd7146cdf87458c5a555a431aec1c51ad",
+    "final_test_raw/noise/fan/fan_09.csv": "57d51dc71ddf64570f1267ffcd4b3e94dfbfe5212df560c12e09238f66ed8fa3",
+    "final_test_raw/noise/keyboard/keyboard_06.csv": "ca1231093b0067a9c2ebad428763963fdacddd0191eedcc60c6b83cc4cfcabee"
+  }
+}

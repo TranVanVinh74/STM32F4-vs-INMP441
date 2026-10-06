@@ -1,0 +1,22 @@
+INTERNAL_TEST - keyboard excluded from ALL evaluation metrics
+Unit: non-overlapping windows of 5 consecutive CSV rows
+Windows: 970
+Accuracy: 79.5876%
+
+sound_type  windows  correct  accuracy_percent
+       fan      296      282         95.270270
+     music      287      180         62.717770
+    speech      387      310         80.103359
+
+              precision    recall  f1-score   support
+
+       NOISE     0.6052    0.9527    0.7402       296
+        KEEP     0.9722    0.7270    0.8319       674
+
+    accuracy                         0.7959       970
+   macro avg     0.7887    0.8399    0.7860       970
+weighted avg     0.8602    0.7959    0.8039       970
+
+Confusion matrix (rows=true, columns=predicted; NOISE, KEEP):
+[[282  14]
+ [184 490]]

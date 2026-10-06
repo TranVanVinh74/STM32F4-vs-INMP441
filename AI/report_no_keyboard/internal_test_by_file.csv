@@ -1,0 +1,5 @@
+source_file,sound_type,windows,accuracy_percent
+dataset_raw\keep\music\music_06.csv,music,287,62.7177700348432
+dataset_raw\keep\speech\speech_07.csv,speech,144,73.61111111111111
+dataset_raw\keep\speech\speech_10.csv,speech,243,83.9506172839506
+dataset_raw\noise\fan\fan_08.csv,fan,296,95.27027027027027

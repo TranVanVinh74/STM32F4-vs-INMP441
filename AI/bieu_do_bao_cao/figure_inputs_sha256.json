@@ -1,0 +1,10 @@
+{
+  "plot_research_report.py": "da9d543c92d0af632a73c59eca0dd2293beb6b84e7c7022acad5f4d900fe9ca4",
+  "training_history_temporal.csv": "e0b1f063582a6926474b53fe33bb2bb7bc29eb5dc77dbbc50163b8406dd3ef0e",
+  "mlp_audio_temporal.keras": "8a6f120b93165a316f23e476c1395f36cacc1afb15f16c3d110f99d7dd8dd8ef",
+  "report_no_keyboard/run_metadata.json": "6d902f2b5ff1785e197409074a7bbe5ff4bad05348a6a646733ec56e60f730f2",
+  "report_no_keyboard/internal_test_predictions.csv": "567300dea8b8eb14f1afdf0afa7d647fc2eecf276996a1524cd6c3c1ac674e85",
+  "report_no_keyboard/internal_test_metrics.json": "f91cb8ecde917098394b18654ab3fece35c54a287cbfcfb39b970a9713b227ca",
+  "report_no_keyboard/final_test_predictions.csv": "0352317ae2f2c5bd97d3b131d2b61468321e195d78e65adb3a56d7e3c6b3ef48",
+  "report_no_keyboard/final_test_metrics.json": "b1f1f865b2fdbb7ad482269fb7ae148cff38b301fafc42626c2ea6f1f64ed590"
+}

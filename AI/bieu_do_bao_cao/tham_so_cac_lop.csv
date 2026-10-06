@@ -1,0 +1,5 @@
+layer,input,units,activation,parameters
+dense,32,32,relu,1056
+dense_1,32,16,relu,528
+dense_2,16,8,relu,136
+dense_3,8,1,sigmoid,9

@@ -1,0 +1,4 @@
+AI/venv_ai/
+**/venv_ai/
+*.dll
+__pycache__/
