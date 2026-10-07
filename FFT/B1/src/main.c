@@ -560,13 +560,18 @@ int main(void) {
                 float min_Variance = 1e9f;
                 float best_Angle = 0.0f;
                 float best_AbsPhamic = 0.0f;
+                float best_PhamicR = 0.0f;
+                float best_PhamicI = 0.0f;
                 float offsets[4] = { 0.0f, PI / 2.0f, PI, 1.5f * PI };
 
                 for (int o = 0; o < 4; o++) {
                     float PhAF[4];
                     unwrap_and_center_phase(raw_phases, offsets[o], PhAF);
 
-                    float Phasq = 0.0f, PhamicR = 0.0f, PhamicI = 0.0f;
+                    float Phasq = 0.0f;
+                    float PhamicR = 0.0f;
+                    float PhamicI = 0.0f;
+
                     for (int i = 0; i < 4; i++) {
                         Phasq += PhAF[i] * PhAF[i];
                         PhamicR += PhAF[i] * mic_X[i];
@@ -587,13 +592,32 @@ int main(void) {
                         min_Variance = MinPV;
                         best_Angle = angle_deg;
                         best_AbsPhamic = AbsPhamic;
+                        best_PhamicR = PhamicR;
+                        best_PhamicI = PhamicI;
                     }
                 }
 
                 if (min_Variance < 0.001f) min_Variance = 0.001f;
+
                 float MeanPV_total = min_Variance + 2.0f * k_factor * best_AbsPhamic;
                 float ScorePV = MeanPV_total / min_Variance;
                 if (ScorePV > 12.0f) ScorePV = 12.0f;
+
+                // DEBUG: tone 1000 Hz -> FFT bin k = 32
+                // Chi log 1 bin/frame de tranh UART lam cham he thong.
+                if (k == 32 && ScorePV > 6.0f) {
+                    char dbg[100];
+                    sprintf(
+                        dbg,
+                        "K=%d R=%.3f I=%.3f ANG=%.1f S=%.2f\r\n",
+                        k,
+                        best_PhamicR,
+                        best_PhamicI,
+                        best_Angle,
+                        ScorePV
+                    );
+                    UART_SendString(USART2, dbg);
+                }
 
                 if (ScorePV > 6.0f) {
                     int angle_index = (int)best_Angle % 360;
