@@ -20,7 +20,7 @@
 // ============================================================
 // 1 = B?T m?ng AI l?c nhi?u (Màn hình mu?t, ch?ng ti?ng vang)
 // 0 = T?T AI (Màn hình hi?n tr?c ti?p RAW DOA, có th? nháy do nhi?u)
-#define ENABLE_AI_TRACKING      0
+#define ENABLE_AI_TRACKING      1
 
 // 1 = B?t truy?n góc DOA lên Python qua UART | 0 = T?t truy?n
 #define SEND_DOA_TEST_UART      1
